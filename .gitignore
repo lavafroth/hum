@@ -1,1 +1,5 @@
 .direnv
+*.mid
+*.wav
+*.ogg
+__pycache__
