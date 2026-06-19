@@ -55,28 +55,28 @@ def align(hum, timings: list[float]):
     y, sr = hum, samplerate
 
     fmin = librosa.note_to_hz("C2").item()
+    n_bins = 40
+    bins_per_octave = 12
 
-    C = librosa.cqt(y=y, sr=sr, fmin=fmin, n_bins=40, bins_per_octave=12)
+    C = librosa.cqt(y=y, sr=sr, fmin=fmin, n_bins=n_bins, bins_per_octave=bins_per_octave)
     C_db = librosa.amplitude_to_db(np.abs(C), ref=np.max)
-    true_frequencies = librosa.cqt_frequencies(fmin=fmin, n_bins=40, bins_per_octave=12)
+    true_frequencies = librosa.cqt_frequencies(fmin=fmin, n_bins=n_bins, bins_per_octave=bins_per_octave)
 
     notes = []
 
     timings.append(librosa.get_duration(y=y, sr=sr))
     frames = librosa.time_to_frames(timings, sr=sr)
 
-    for t_start, t_end, frame_start, frame_end in zip(
-        timings, timings[1:], frames, frames[1:]
-    ):
+    for frame_start, frame_end in zip(frames, frames[1:]):
         if frame_end - frame_start < 3:
             continue
 
         freq = loudest_frequency(C_db[:, frame_start:frame_end], true_frequencies)
 
-        if np.isnan(freq):
+        if np.isnan(freq) or freq < 85:
             continue
 
-        notes.append(freq * 2)
+        notes.append(freq)
     return notes
 
 

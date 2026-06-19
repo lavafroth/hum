@@ -12,7 +12,7 @@ class FrequencyPlayer:
         self.freq_ix = 0
 
     def __call__(self, out, frames: int, _time, _status):
-        freq = self.freqs[self.freq_ix] if self.inbounds() else 0
+        freq = 2 * self.freqs[self.freq_ix] if self.inbounds() else 0
 
         dt = 1 / self.sr
         phase_increment = 2 * np.pi * freq * dt
