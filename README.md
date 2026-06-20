@@ -9,22 +9,24 @@ nix develop
 python main.py
 ```
 
-### Baseline
+### Capturing Frequencies
 
-For the first time, you need to hum a single note at a frequency you're comfortable in. Press _q_ to confirm the baseline.
+For the first pass, hum each note *slowly* and press the space bar at the start of each note.
+Press _Q_ to confirm.
 
-### Melody
+### Rhythm
 
-For the second round, hum the melody, pressing the space bar at the start of each note. This should feel natural as humans have an incredible sense of rhythm.
+After pressing _Q_, the frequencies will be played back to you.
 
-Finally, press q to stop recording.
+Press any key on the keyboard to time the rhythm of the notes.
+Once the melody plays out, the program outputs a MIDI file `output.mid`.
 
 ### Replay
 
-You can play the output midi file with a command line tool like _timidity_
+You can play the output MIDI file with a command line tool like _timidity_
 
 ```sh
 timidity --volume=150 output.mid
 ```
 
-or open them in a DAW like _Ardour_.
+or open them in a digital audio workstation like _Ardour_.
