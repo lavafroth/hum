@@ -9,6 +9,7 @@ import sounddevice as sd
 import time
 from dataclasses import dataclass
 from scipy.stats import mode
+import sys
 
 samplerate = 22050
 channels = 1  # mono
@@ -21,7 +22,7 @@ class Note:
     end: float
 
 
-async def record_audio(event):
+async def record_audio(event) -> NDArray:
     chunks = []
 
     def callback(indata, _frames, _time, _status):
@@ -32,8 +33,7 @@ async def record_audio(event):
     with stream:
         await event.wait()
 
-    if chunks:
-        return np.concatenate(chunks, axis=0).squeeze().astype(np.float32)
+    return np.concatenate(chunks, axis=0).squeeze().astype(np.float32)
 
 
 def loudest_frequency(chunk: NDArray, bins: NDArray) -> float:
@@ -112,7 +112,7 @@ def save(notes: list[Note], to: str):
     mid.save(to)
 
 
-async def record_audio_times(event):
+async def record_audio_times(event) -> list[float]:
     humming_timestamps = []
     start_session = time.perf_counter()
 
@@ -127,31 +127,42 @@ async def record_audio_times(event):
     return humming_timestamps
 
 
-async def main():
-    event = asyncio.Event()
+async def main(argument):
 
-    print("hum your melody slowly, one note at a time: press 'q' to stop recording")
-    print("anything else to mark a note boundary")
+    if argument != "resume":
+        event = asyncio.Event()
+
+        print("hum your melody slowly, one note at a time: press 'q' to stop recording")
+        print("anything else to mark a note boundary")
     
-    results = await asyncio.gather(record_audio(event), record_audio_times(event))
+        audio, timings = await asyncio.gather(record_audio(event), record_audio_times(event))
+
+        np.savez("recording.npz", audio=audio, timings=timings)
+
+    else:
+        np_zip = np.load('recording.npz')
+        audio, timings = np_zip["audio"], list(np_zip["timings"])
 
     print("playing notes back to you")
     print("press 'q' to stop capturing rhythm")
     print("keep pressing any other key at the correct rhythm until all notes are exhausted")
     print("ready whenever you are")
 
-    freqs = align(*results)
-    event = asyncio.Event()
-    _, timestamps = await asyncio.gather(
-        play_frequencies(event, freqs),
-        handle_input_event(event, freqs),
-    )
+    try:
+        freqs = align(audio, timings)
+        event = asyncio.Event()
+        _, timestamps = await asyncio.gather(
+            play_frequencies(event, freqs),
+            handle_input_event(event, freqs),
+        )
 
-    notes = [
-        Note(freq, start, end)
-        for freq, start, end in zip(freqs[1:], timestamps[1:], timestamps[2:])
-    ]
-    save(notes, "output.mid")
+        notes = [
+            Note(freq, start, end)
+            for freq, start, end in zip(freqs[1:], timestamps[1:], timestamps[2:])
+        ]
+        save(notes, "output.mid")
+    except KeyboardInterrupt:
+        print("if you want to retry capturing the  rhythm run")
+        print("python main.py resume")
 
-
-asyncio.run(main())
+asyncio.run(main(sys.argv[1] if len(sys.argv) > 1 else None))
