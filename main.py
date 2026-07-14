@@ -48,7 +48,7 @@ def loudest_frequency(chunk: NDArray, bins: NDArray) -> float:
     return bins[stable_center_row]
 
 
-def align(hum, timings: list[float]):
+def align(hum, timings: list[float]) -> list[float]:
     if len(timings) == 0:
         raise Exception("Error: No note boundaries set.")
 
@@ -58,11 +58,17 @@ def align(hum, timings: list[float]):
     n_bins = 40
     bins_per_octave = 12
 
-    C = librosa.cqt(y=y, sr=sr, fmin=fmin, n_bins=n_bins, bins_per_octave=bins_per_octave)
+    C = librosa.cqt(
+        y=y, sr=sr, fmin=fmin, n_bins=n_bins, bins_per_octave=bins_per_octave
+    )
     C_db = librosa.amplitude_to_db(np.abs(C), ref=np.max)
-    true_frequencies = librosa.cqt_frequencies(fmin=fmin, n_bins=n_bins, bins_per_octave=bins_per_octave)
+    true_frequencies = librosa.cqt_frequencies(
+        fmin=fmin, n_bins=n_bins, bins_per_octave=bins_per_octave
+    )
 
-    notes = []
+    notes: list[float] = [
+        0.0,
+    ]
 
     timings.append(librosa.get_duration(y=y, sr=sr))
     frames = librosa.time_to_frames(timings, sr=sr)
@@ -106,12 +112,10 @@ def save(notes: list[Note], to: str):
     mid.save(to)
 
 
-async def bob(event):
+async def record_audio_times(event):
     humming_timestamps = []
     start_session = time.perf_counter()
 
-    print("hum your melody: press 'q' to stop recording")
-    print("anything else to mark a note boundary")
 
     while not await asyncio.to_thread(keypress, "q"):
         current_time = time.perf_counter() - start_session
@@ -125,7 +129,16 @@ async def bob(event):
 
 async def main():
     event = asyncio.Event()
-    results = await asyncio.gather(record_audio(event), bob(event))
+
+    print("hum your melody slowly, one note at a time: press 'q' to stop recording")
+    print("anything else to mark a note boundary")
+    
+    results = await asyncio.gather(record_audio(event), record_audio_times(event))
+
+    print("playing notes back to you")
+    print("press 'q' to stop capturing rhythm")
+    print("keep pressing any other key at the correct rhythm until all notes are exhausted")
+    print("ready whenever you are")
 
     freqs = align(*results)
     event = asyncio.Event()
@@ -136,7 +149,7 @@ async def main():
 
     notes = [
         Note(freq, start, end)
-        for freq, start, end in zip(freqs, timestamps, timestamps[1:])
+        for freq, start, end in zip(freqs[1:], timestamps[1:], timestamps[2:])
     ]
     save(notes, "output.mid")
 
